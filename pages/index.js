@@ -230,7 +230,7 @@ export default function Home({ initialTodos = [] }) {
 export async function getServerSideProps() {
   try {
     // For SSR, import server-side todos directly so the page renders on the server
-    const { todos } = await import("../lib/data/todos");
+    const { todos } = await import("../pages/lib/data/todos");
     return { props: { initialTodos: todos } };
   } catch (err) {
     return { props: { initialTodos: [] } };
