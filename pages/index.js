@@ -1,7 +1,7 @@
-'use client';
+"use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import TodoItem from "../pages/components/TodoItem";
+import TodoItem from "../components/TodoItem";
 import {
   fetchTodos as clientFetchTodos,
   updateTodo,
@@ -43,7 +43,7 @@ export default function Home({ initialTodos = [] }) {
         const byId = {};
         local.forEach((t) => (byId[String(t.id)] = t));
         // Remove todos dependency from this function to avoid infinite loop
-        setTodos(currentTodos => {
+        setTodos((currentTodos) => {
           currentTodos.forEach((t) => (byId[String(t.id)] = t));
           return Object.values(byId);
         });
@@ -70,7 +70,7 @@ export default function Home({ initialTodos = [] }) {
 
   async function handleUpdate(updatedTodo) {
     console.log("Updating todo:", updatedTodo); // Debug log
-    
+
     try {
       // Call API to update on server (if not a local-only todo)
       if (!updatedTodo.isLocal) {
@@ -81,15 +81,15 @@ export default function Home({ initialTodos = [] }) {
     }
 
     // Update React state
-    setTodos(prevTodos => 
-      prevTodos.map(todo => 
+    setTodos((prevTodos) =>
+      prevTodos.map((todo) =>
         String(todo.id) === String(updatedTodo.id) ? updatedTodo : todo
       )
     );
 
     // Update localStorage for local todos
-    const localTodos = todos.filter(t => t.isLocal);
-    const updatedLocalTodos = localTodos.map(todo =>
+    const localTodos = todos.filter((t) => t.isLocal);
+    const updatedLocalTodos = localTodos.map((todo) =>
       String(todo.id) === String(updatedTodo.id) ? updatedTodo : todo
     );
     localStorage.setItem("todos", JSON.stringify(updatedLocalTodos));
