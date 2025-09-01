@@ -16,4 +16,3 @@ export let todos = [
   { id: "15", content: "Meditate 10 minutes", completed: true, createdAt: new Date().toISOString() },
 ];
 
-
