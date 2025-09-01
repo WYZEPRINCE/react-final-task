@@ -1,40 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# Todo App
+
+A modern, full-stack todo application built with Next.js, featuring both server-side rendering and client-side functionality with local storage support.
+
+## Features
+
+- ✅ Create, read, update, and delete todos
+- 📱 Responsive design with mobile and desktop layouts
+- 🔄 Real-time synchronization between API and localStorage
+- 📊 Filter todos by status (All, Completed, Incomplete)
+- 🎨 Modern UI with Tailwind CSS
+- 🚀 Server-side rendering (SSR) for fast initial load
+- 💾 Hybrid storage: API backend + localStorage for offline capability
+
+## Tech Stack
+
+- **Framework**: Next.js (Pages Router)
+- **Styling**: Tailwind CSS
+- **State Management**: React useState/useEffect
+- **Storage**: API endpoints + localStorage
+- **UI Components**: Custom React components
+
+## Project Structure
+
+```
+├── pages/
+│   ├── api/
+│   │   └── todos/
+│   │       ├── index.js          # GET /api/todos, POST /api/todos
+│   │       └── [id].js           # GET/PUT/DELETE /api/todos/[id]
+│   ├── todos/
+│   │   ├── [id].jsx              # Individual todo page
+│   │   └── new.jsx               # Create new todo page
+│   ├── components/
+│   │   ├── TodoItem.jsx          # Todo list item component
+│   │   └── TodoForm.jsx          # Todo creation/editing form
+│   ├── utils/
+│   │   └── helper.js             # API utility functions
+│   └── index.jsx                 # Home page with todo list
+├── lib/
+│   └── data/
+│       └── todos.js              # Todo data store
+└── styles/
+    └── globals.css               # Global styles + Tailwind
+```
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. Clone the repository
+```bash
+git clone <your-repo-url>
+cd todo-app
+```
+
+2. Install dependencies
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Set up environment variables (optional)
+```bash
+# .env.local
+API_BASE_URL=http://localhost:3000           # for server-side requests
+NEXT_PUBLIC_BASE_URL=http://localhost:3000   # for client-side requests
+```
+
+4. Start the development server
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+## API Endpoints
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/todos` | Fetch all todos |
+| POST | `/api/todos` | Create a new todo |
+| GET | `/api/todos/[id]` | Fetch a specific todo |
+| PUT | `/api/todos/[id]` | Update a specific todo |
+| DELETE | `/api/todos/[id]` | Delete a specific todo |
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+## Component Overview
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### TodoItem
+- Displays individual todo items
+- Handles inline editing mode
+- Provides delete and edit actions
+- Shows creation date
 
-## Learn More
+### TodoForm
+- Reusable form for creating and editing todos
+- Handles form validation
+- Supports both create and update modes
 
-To learn more about Next.js, take a look at the following resources:
+### Home (Main Page)
+- Lists all todos with filtering
+- Responsive sidebar/mobile tabs
+- Real-time sync between API and localStorage
+- Server-side rendering for initial load
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+## Data Flow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Initial Load**: Server-side rendering fetches todos from API
+2. **Client Hydration**: Merges server data with localStorage data
+3. **Real-time Updates**: Storage events sync data across tabs
+4. **Hybrid Storage**: 
+   - API todos are persisted on the server
+   - Local todos are stored in localStorage
+   - Both are merged in the UI
 
-## Deploy on Vercel
+## Storage Strategy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The app uses a hybrid storage approach:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+- **Server Storage**: Todos from API endpoints (persistent across devices)
+- **Local Storage**: Client-created todos (device-specific)
+- **Merging**: Both sources are combined and deduplicated by ID
+
+## Known Issues
+
+- ID type mismatches between string and number types
+- Potential infinite loops in useEffect dependencies
+- API error handling needs improvement
+- Missing error boundaries for better UX
+
+## Development
+
+### Adding New Features
+
+1. **New API endpoints**: Add to `pages/api/`
+2. **New pages**: Add to `pages/`
+3. **New components**: Add to `pages/components/`
+4. **Styling**

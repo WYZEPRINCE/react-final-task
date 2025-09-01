@@ -1,115 +1,238 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+'use client';
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import TodoItem from "../pages/components/TodoItem";
+import {
+  fetchTodos as clientFetchTodos,
+  updateTodo,
+  deleteTodo,
+} from "../pages/utils/helper";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+export default function Home({ initialTodos = [] }) {
+  const [todos, setTodos] = useState(initialTodos);
+  const [activeTab, setActiveTab] = useState("all");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+  useEffect(() => {
+    // load client-side latest (merge server API + localStorage)
+    async function load() {
+      try {
+        const api = await clientFetchTodos(); // fetch from /api/todos
+        // local todos saved by the app (if any)
+        const local = JSON.parse(localStorage.getItem("todos") || "[]");
 
-export default function Home() {
+        // merge: local ones first, then API (avoid duplicates by id)
+        const byId = {};
+        local.concat(api).forEach((t) => (byId[String(t.id)] = t));
+        const merged = Object.values(byId);
+
+        setTodos(merged);
+      } catch (err) {
+        console.error("Client fetch failed, falling back to SSR data:", err);
+        setTodos((prev) => (prev.length ? prev : initialTodos));
+      }
+    }
+
+    load();
+
+    // Listen for storage events so adding in New page updates list instantly
+    function onStorage(e) {
+      if (e.key === "todos" || e.key === "newTodo") {
+        const local = JSON.parse(localStorage.getItem("todos") || "[]");
+        // merge again
+        const byId = {};
+        local.forEach((t) => (byId[String(t.id)] = t));
+        // Remove todos dependency from this function to avoid infinite loop
+        setTodos(currentTodos => {
+          currentTodos.forEach((t) => (byId[String(t.id)] = t));
+          return Object.values(byId);
+        });
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [initialTodos]); // ✅ Removed 'todos' dependency to fix infinite loop
+
+  async function handleDelete(id) {
+    try {
+      await deleteTodo(id); // call API
+    } catch (e) {
+      console.error("API delete failed (server)", e);
+    }
+    const updated = todos.filter((t) => String(t.id) !== String(id));
+    setTodos(updated);
+    // persist only local-created ones
+    localStorage.setItem(
+      "todos",
+      JSON.stringify(updated.filter((t) => t.isLocal))
+    );
+  }
+
+  async function handleUpdate(updatedTodo) {
+    console.log("Updating todo:", updatedTodo); // Debug log
+    
+    try {
+      // Call API to update on server (if not a local-only todo)
+      if (!updatedTodo.isLocal) {
+        await updateTodo(updatedTodo.id, updatedTodo);
+      }
+    } catch (e) {
+      console.error("API update failed (server)", e);
+    }
+
+    // Update React state
+    setTodos(prevTodos => 
+      prevTodos.map(todo => 
+        String(todo.id) === String(updatedTodo.id) ? updatedTodo : todo
+      )
+    );
+
+    // Update localStorage for local todos
+    const localTodos = todos.filter(t => t.isLocal);
+    const updatedLocalTodos = localTodos.map(todo =>
+      String(todo.id) === String(updatedTodo.id) ? updatedTodo : todo
+    );
+    localStorage.setItem("todos", JSON.stringify(updatedLocalTodos));
+  }
+
+  const completedCount = todos.filter((t) => t.completed).length;
+  const incompleteCount = todos.filter((t) => !t.completed).length;
+
+  const filteredTodos = todos.filter((todo) => {
+    if (activeTab === "completed") return todo.completed;
+    if (activeTab === "incomplete") return !todo.completed;
+    return true;
+  });
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              pages/index.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="flex min-h-screen">
+      {/* Sidebar - md+ only */}
+      <div
+        className={`hidden md:flex flex-col w-64 bg-white shadow-lg transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-64"
+        }`}
+      >
+        <h2 className="text-xl font-bold p-4 border-b">Filters</h2>
+        <nav className="flex flex-col p-2 gap-2">
+          <button
+            className={`flex justify-between items-center px-3 py-2 rounded-xl ${
+              activeTab === "all"
+                ? "bg-blue-500 text-white font-semibold"
+                : "hover:bg-gray-100"
+            }`}
+            onClick={() => setActiveTab("all")}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <span>All</span>
+            <span className="bg-gray-200 text-xs px-2 py-1 rounded-lg">
+              {todos.length}
+            </span>
+          </button>
+          <button
+            className={`flex justify-between items-center px-3 py-2 rounded-xl ${
+              activeTab === "completed"
+                ? "bg-blue-500 text-white font-semibold"
+                : "hover:bg-gray-100"
+            }`}
+            onClick={() => setActiveTab("completed")}
           >
-            Read our docs
-          </a>
+            <span>Completed</span>
+            <span className="bg-gray-200 text-xs px-2 py-1 rounded-lg">
+              {completedCount}
+            </span>
+          </button>
+          <button
+            className={`flex justify-between items-center px-3 py-2 rounded-xl ${
+              activeTab === "incomplete"
+                ? "bg-blue-500 text-white font-semibold"
+                : "hover:bg-gray-100"
+            }`}
+            onClick={() => setActiveTab("incomplete")}
+          >
+            <span>Incomplete</span>
+            <span className="bg-gray-200 text-xs px-2 py-1 rounded-lg">
+              {incompleteCount}
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-4">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">My Todos</h1>
+          <div className="flex items-center gap-2">
+            <button
+              className="hidden md:block px-3 py-1 bg-gray-200 rounded-lg hover:bg-gray-300"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              {sidebarOpen ? "Hide Filters" : "Show Filters"}
+            </button>
+            <Link
+              href="/todos/new"
+              className="bg-blue-500 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-600"
+            >
+              + Add
+            </Link>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {/* Mobile tabs */}
+        <div className="flex md:hidden justify-around bg-white rounded-xl shadow-sm mb-6">
+          <button
+            className={`flex-1 py-2 rounded-xl ${
+              activeTab === "all" ? "bg-blue-500 text-white font-semibold" : ""
+            }`}
+            onClick={() => setActiveTab("all")}
+          >
+            All ({todos.length})
+          </button>
+          <button
+            className={`flex-1 py-2 rounded-xl ${
+              activeTab === "completed"
+                ? "bg-blue-500 text-white font-semibold"
+                : ""
+            }`}
+            onClick={() => setActiveTab("completed")}
+          >
+            Completed ({completedCount})
+          </button>
+          <button
+            className={`flex-1 py-2 rounded-xl ${
+              activeTab === "incomplete"
+                ? "bg-blue-500 text-white font-semibold"
+                : ""
+            }`}
+            onClick={() => setActiveTab("incomplete")}
+          >
+            Incomplete ({incompleteCount})
+          </button>
+        </div>
+
+        <div>
+          {filteredTodos.length > 0 ? (
+            filteredTodos.map((t) => (
+              <TodoItem
+                key={t.id}
+                todo={t}
+                onDelete={handleDelete}
+                onUpdate={handleUpdate}
+              />
+            ))
+          ) : (
+            <p className="text-center text-gray-500 mt-4">No todos found.</p>
+          )}
+        </div>
+      </div>
+    </main>
   );
+}
+
+export async function getServerSideProps() {
+  try {
+    // For SSR, import server-side todos directly so the page renders on the server
+    const { todos } = await import("../lib/data/todos");
+    return { props: { initialTodos: todos } };
+  } catch (err) {
+    return { props: { initialTodos: [] } };
+  }
 }
