@@ -1,34 +1,33 @@
 "use client";
 import TodoForm from "../components/TodoForm";
-import { fetchTodo, updateTodo, deleteTodo } from "../utils/helper";
+import { fetchTodo, updateTodo, deleteTodo } from "../../utils/helper";
 import Router from "next/router";
 
 export default function TodoDetail({ todo: initialTodo }) {
-  console.log(todo)
+  console.log(todo);
   if (!initialTodo) {
     return <p className="p-4 text-red-500">Todo not found</p>;
   }
 
   async function handleUpdate(updatedFields) {
-  const updatedTodo = { ...initialTodo, ...updatedFields }; // keep everything
+    const updatedTodo = { ...initialTodo, ...updatedFields }; // keep everything
 
-  try {
-    // ✅ send full todo
-    await updateTodo(initialTodo.id, { content, completed });
+    try {
+      // ✅ send full todo
+      await updateTodo(initialTodo.id, { content, completed });
 
-    // ✅ sync local storage
-    const local = JSON.parse(localStorage.getItem("todos") || "[]");
-    const newLocal = local.map((t) =>
-      String(t.id) === String(updatedTodo.id) ? updatedTodo : t
-    );
-    localStorage.setItem("todos", JSON.stringify(newLocal));
+      // ✅ sync local storage
+      const local = JSON.parse(localStorage.getItem("todos") || "[]");
+      const newLocal = local.map((t) =>
+        String(t.id) === String(updatedTodo.id) ? updatedTodo : t
+      );
+      localStorage.setItem("todos", JSON.stringify(newLocal));
 
-    Router.push("/");
-  } catch (err) {
-    console.error("Update failed:", err);
+      Router.push("/");
+    } catch (err) {
+      console.error("Update failed:", err);
+    }
   }
-}
-
 
   async function handleDelete(id) {
     try {

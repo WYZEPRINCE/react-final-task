@@ -1,4 +1,4 @@
-import { todos } from "@/pages/lib/data/todos";
+import { todos } from "@/lib/data/todos";
 
 export default function handler(req, res) {
   if (req.method === "GET") {
